@@ -5,6 +5,12 @@ import multiprocessing as mp
 from multiprocessing import Lock
 import time
 import random
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from scipy import ndimage
+from scipy import signal
+import matplotlib.pyplot as plt
+
 
 # Función auxiliar para multiprocessing
 def process_image_helper(args):
@@ -39,3 +45,42 @@ class NIQECalculator:
                 patches.append(patch)
         
         return patches
+    
+    def _compute_local_features(self, patch):
+        """Calcular características locales en un parche"""
+        # 1. Compute MSCN coefficients
+        mu = cv2.GaussianBlur(patch, (7, 7), 1.166)
+        sigma = np.sqrt(np.abs(cv2.GaussianBlur(patch**2, (7, 7), 1.166) - mu**2))
+        sigma = np.maximum(sigma, 1e-10)  # Evitar división por cero
+        mscn = (patch - mu) / sigma
+        
+        # 2. Compute statistics
+        features = []
+        
+        # Mean, variance, skewness, kurtosis of MSCN coefficients
+        features.append(np.mean(mscn))
+        features.append(np.var(mscn))
+        features.append(np.mean((mscn - np.mean(mscn))**3) / (np.var(mscn)**1.5))  # Skewness
+        features.append(np.mean((mscn - np.mean(mscn))**4) / (np.var(mscn)**2))    # Kurtosis
+        
+        # 3. Compute pairwise products
+        h_shift = np.roll(mscn, 1, axis=1)
+        v_shift = np.roll(mscn, 1, axis=0)
+        d1_shift = np.roll(np.roll(mscn, 1, axis=0), 1, axis=1)
+        d2_shift = np.roll(np.roll(mscn, 1, axis=0), -1, axis=1)
+        
+        # Productos de coeficientes adyacentes
+        h_product = mscn[:, :-1] * mscn[:, 1:]
+        v_product = mscn[:-1, :] * mscn[1:, :]
+        d1_product = mscn[:-1, :-1] * mscn[1:, 1:]
+        d2_product = mscn[:-1, 1:] * mscn[1:, :-1]
+        
+        # Estadísticas de los productos
+        for product in [h_product.flatten(), v_product.flatten(), 
+                        d1_product.flatten(), d2_product.flatten()]:
+            features.append(np.mean(product))
+            features.append(np.var(product))
+            features.append(np.mean((product - np.mean(product))**3) / (np.var(product)**1.5))
+            features.append(np.mean((product - np.mean(product))**4) / (np.var(product)**2))
+        
+        return np.array(features)
