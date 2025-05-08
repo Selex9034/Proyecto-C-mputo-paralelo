@@ -494,7 +494,7 @@ class ImageRestorer:
         balanced_image_paths = load_balancing(image_paths, num_processes)
     
         # tiempo secuencial para métricas estimado
-        tiempo_secuencial_estimado = 1 * len(image_paths)  
+        tiempo_secuencial_estimado = 5 * len(image_paths)  
     
     
         all_args = []
@@ -671,7 +671,7 @@ def main():
     restorer = ImageRestorer(input_dir, output_dir)
 
     # Tiempo inicial
-    tiempo_secuencial_estimado = 0.2  # segundos por imagen, estimado
+    tiempo_secuencial_estimado = 5 # segundos por imagen, estimado
     inicio = time.time()
 
     # Ejecutar procesamiento
